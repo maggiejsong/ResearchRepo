@@ -6,6 +6,8 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ProjectFilters } from '@/components/filters/ProjectFilters'
+import { DataExport } from '@/components/export/DataExport'
 import { 
   Plus, 
   Search, 
@@ -143,6 +145,7 @@ export default function ProjectsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
             </div>
             <div className="flex items-center space-x-2">
+              <DataExport allProjects={true} />
               <Link href="/projects/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
