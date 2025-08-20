@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { 
   Download, 
   Upload, 
@@ -93,34 +95,37 @@ export function ProjectImport({ service, onImportComplete }: ProjectImportProps)
   const serviceName = service === 'qualtrics' ? 'Qualtrics' : 'Great Question'
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-            service === 'qualtrics' ? 'bg-blue-100' : 'bg-green-100'
-          }`}>
-            <ExternalLink className={`h-4 w-4 ${
-              service === 'qualtrics' ? 'text-blue-600' : 'text-green-600'
-            }`} />
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              service === 'qualtrics' ? 'bg-blue-100' : 'bg-green-100'
+            }`}>
+              <ExternalLink className={`h-4 w-4 ${
+                service === 'qualtrics' ? 'text-blue-600' : 'text-green-600'
+              }`} />
+            </div>
+            <div>
+              <CardTitle>Import from {serviceName}</CardTitle>
+              <CardDescription>
+                {service === 'qualtrics' 
+                  ? 'Import surveys and response data' 
+                  : 'Import research projects and participant data'}
+              </CardDescription>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">Import from {serviceName}</h3>
-            <p className="text-sm text-gray-600">
-              {service === 'qualtrics' 
-                ? 'Import surveys and response data' 
-                : 'Import research projects and participant data'}
-            </p>
-          </div>
+          <Button onClick={fetchProjects} disabled={loading}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {loading ? 'Loading...' : 'Fetch Projects'}
+          </Button>
         </div>
-        <Button onClick={fetchProjects} disabled={loading}>
-          {loading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4 mr-2" />
-          )}
-          {loading ? 'Loading...' : 'Fetch Projects'}
-        </Button>
-      </div>
+      </CardHeader>
+      <CardContent>
 
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
@@ -212,6 +217,7 @@ export function ProjectImport({ service, onImportComplete }: ProjectImportProps)
           <p>Click "Fetch Projects" to load available {serviceName.toLowerCase()} projects</p>
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

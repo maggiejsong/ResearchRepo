@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const format = searchParams.get('format') || 'csv'
     const includeMetrics = searchParams.get('includeMetrics') === 'true'
     const includeFiles = searchParams.get('includeFiles') === 'true'
@@ -19,25 +19,25 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const where: Record<string, unknown> = {}
-
-    // Filter by specific project IDs
+    // Build query filters
+    const where: any = {}
+    
     if (projectIds && projectIds.length > 0) {
       where.id = { in: projectIds }
     }
-
-    // Date range filter
+    
     if (startDate || endDate) {
       where.createdAt = {}
       if (startDate) where.createdAt.gte = new Date(startDate)
       if (endDate) where.createdAt.lte = new Date(endDate)
     }
 
+    // Fetch projects with related data
     const projects = await prisma.project.findMany({
       where,
       include: {
         createdBy: {
-          select: { id: true, name: true, email: true }
+          select: { name: true, email: true }
         },
         tags: includeTags ? {
           include: {
@@ -56,70 +56,151 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Transform data for export
-    const exportData = projects.map(project => {
-      const baseData = {
-        id: project.id,
-        title: project.title,
-        description: project.description,
-        status: project.status,
-        source: project.source,
-        externalId: project.externalId,
-        startDate: project.startDate?.toISOString(),
-        endDate: project.endDate?.toISOString(),
-        participantCount: project.participantCount,
-        budget: project.budget,
-        createdBy: project.createdBy.name,
-        createdAt: project.createdAt.toISOString(),
-        updatedAt: project.updatedAt.toISOString()
-      }
-
-      if (includeTags && project.tags) {
-        Object.assign(baseData, {
-          tags: project.tags.map(pt => pt.tag.name).join(', '),
-          categories: [...new Set(project.tags.map(pt => pt.tag.category.name))].join(', ')
-        })
-      }
-
-      if (includeMetrics && project.metrics) {
-        project.metrics.forEach(metric => {
-          Object.assign(baseData, { [`metric_${metric.metricKey}`]: metric.value })
-        })
-      }
-
-      if (includeFiles && project.files) {
-        Object.assign(baseData, {
-          fileCount: project.files.length,
-          totalFileSize: project.files.reduce((sum, file) => sum + file.size, 0)
-        })
-      }
-
-      return baseData
-    })
+    if (format === 'json') {
+      return NextResponse.json(projects, {
+        headers: {
+          'Content-Disposition': `attachment; filename="uxr-projects-${new Date().toISOString().split('T')[0]}.json"`,
+          'Content-Type': 'application/json'
+        }
+      })
+    }
 
     if (format === 'csv') {
-      const csv = convertToCSV(exportData)
-      return new NextResponse(csv, {
+      const csvHeaders = [
+        'ID',
+        'Title',
+        'Description',
+        'Status',
+        'Source',
+        'Participant Count',
+        'Budget',
+        'Start Date',
+        'End Date',
+        'Created By',
+        'Created At',
+        'Updated At'
+      ]
+
+      if (includeTags) {
+        csvHeaders.push('Tags', 'Categories')
+      }
+
+      if (includeMetrics) {
+        csvHeaders.push('Metrics')
+      }
+
+      if (includeFiles) {
+        csvHeaders.push('Files Count', 'Files')
+      }
+
+      const csvRows = projects.map(project => {
+        const row = [
+          project.id,
+          `"${project.title}"`,
+          `"${project.description || ''}"`,
+          project.status,
+          project.source,
+          project.participantCount || 0,
+          project.budget || 0,
+          project.startDate?.toISOString().split('T')[0] || '',
+          project.endDate?.toISOString().split('T')[0] || '',
+          project.createdBy.name,
+          project.createdAt.toISOString().split('T')[0],
+          project.updatedAt.toISOString().split('T')[0]
+        ]
+
+        if (includeTags && project.tags) {
+          const tags = project.tags.map(pt => pt.tag.name).join('; ')
+          const categories = [...new Set(project.tags.map(pt => pt.tag.category.name))].join('; ')
+          row.push(`"${tags}"`, `"${categories}"`)
+        }
+
+        if (includeMetrics && project.metrics) {
+          const metrics = project.metrics.map(m => `${m.metricKey}: ${m.value}`).join('; ')
+          row.push(`"${metrics}"`)
+        }
+
+        if (includeFiles && project.files) {
+          const filesCount = project.files.length
+          const files = project.files.map(f => f.originalName).join('; ')
+          row.push(filesCount.toString(), `"${files}"`)
+        }
+
+        return row.join(',')
+      })
+
+      const csvContent = [csvHeaders.join(','), ...csvRows].join('\n')
+
+      return new NextResponse(csvContent, {
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="uxr-projects-${new Date().toISOString().split('T')[0]}.csv"`
+          'Content-Disposition': `attachment; filename="uxr-projects-${new Date().toISOString().split('T')[0]}.csv"`,
+          'Content-Type': 'text/csv'
         }
       })
-    } else if (format === 'json') {
-      return new NextResponse(JSON.stringify(exportData, null, 2), {
+    }
+
+    if (format === 'pdf') {
+      // For PDF export, we'll return a simplified HTML that can be converted to PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>UXR Projects Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .summary { background-color: #f9f9f9; padding: 15px; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>UXR Projects Report</h1>
+            <p>Generated on ${new Date().toLocaleDateString()}</p>
+          </div>
+          
+          <div class="summary">
+            <h2>Summary</h2>
+            <p><strong>Total Projects:</strong> ${projects.length}</p>
+            <p><strong>Active Projects:</strong> ${projects.filter(p => p.status === 'ACTIVE').length}</p>
+            <p><strong>Completed Projects:</strong> ${projects.filter(p => p.status === 'COMPLETED').length}</p>
+            <p><strong>Total Participants:</strong> ${projects.reduce((sum, p) => sum + (p.participantCount || 0), 0)}</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Source</th>
+                <th>Participants</th>
+                <th>Created</th>
+                ${includeTags ? '<th>Tags</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${projects.map(project => `
+                <tr>
+                  <td>${project.title}</td>
+                  <td>${project.status}</td>
+                  <td>${project.source}</td>
+                  <td>${project.participantCount || 0}</td>
+                  <td>${project.createdAt.toLocaleDateString()}</td>
+                  ${includeTags ? `<td>${project.tags?.map(pt => pt.tag.name).join(', ') || ''}</td>` : ''}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `
+
+      return new NextResponse(htmlContent, {
         headers: {
-          'Content-Type': 'application/json',
-          'Content-Disposition': `attachment; filename="uxr-projects-${new Date().toISOString().split('T')[0]}.json"`
-        }
-      })
-    } else if (format === 'pdf') {
-      // For PDF, we'll return a simple text format for now
-      // In a real implementation, you'd use a PDF library like jsPDF
-      const text = generatePDFContent(exportData)
-      return new NextResponse(text, {
-        headers: {
-          'Content-Type': 'text/plain',
-          'Content-Disposition': `attachment; filename="uxr-projects-${new Date().toISOString().split('T')[0]}.txt"`
+          'Content-Disposition': `attachment; filename="uxr-projects-${new Date().toISOString().split('T')[0]}.html"`,
+          'Content-Type': 'text/html'
         }
       })
     }
@@ -129,46 +210,4 @@ export async function GET(request: NextRequest) {
     console.error('Error exporting data:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-}
-
-function convertToCSV(data: Record<string, unknown>[]): string {
-  if (data.length === 0) return ''
-
-  const headers = Object.keys(data[0])
-  const csvContent = [
-    headers.join(','),
-    ...data.map(row => 
-      headers.map(header => {
-        const value = row[header]
-        const stringValue = value?.toString() || ''
-        // Escape quotes and wrap in quotes if contains comma or quote
-        return stringValue.includes(',') || stringValue.includes('"') 
-          ? `"${stringValue.replace(/"/g, '""')}"` 
-          : stringValue
-      }).join(',')
-    )
-  ].join('\n')
-
-  return csvContent
-}
-
-function generatePDFContent(data: Record<string, unknown>[]): string {
-  let content = 'UXR METRICS DASHBOARD - PROJECT EXPORT\n'
-  content += '=' .repeat(50) + '\n\n'
-  content += `Generated: ${new Date().toLocaleString()}\n`
-  content += `Total Projects: ${data.length}\n\n`
-
-  data.forEach((project, index) => {
-    content += `${index + 1}. ${project.title}\n`
-    content += `-`.repeat(20) + '\n'
-    content += `Status: ${project.status}\n`
-    content += `Source: ${project.source}\n`
-    if (project.description) content += `Description: ${project.description}\n`
-    if (project.participantCount) content += `Participants: ${project.participantCount}\n`
-    if (project.budget) content += `Budget: $${project.budget}\n`
-    content += `Created: ${new Date(project.createdAt as string).toLocaleDateString()}\n`
-    content += '\n'
-  })
-
-  return content
 }

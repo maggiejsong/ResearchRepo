@@ -6,7 +6,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { ProjectImport } from '@/components/import/ProjectImport'
+import { useToast } from '@/hooks/use-toast'
 import { 
   ArrowLeft, 
   Save, 
@@ -30,6 +33,7 @@ interface ApiToken {
 export default function SettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { toast } = useToast()
   const [tokens, setTokens] = useState<ApiToken[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -95,11 +99,18 @@ export default function SettingsPage() {
 
       if (response.ok) {
         fetchTokens()
-        alert('API tokens saved successfully!')
+        toast({
+          title: "Success",
+          description: "API tokens saved successfully!",
+        })
       }
     } catch (error) {
       console.error('Error saving tokens:', error)
-      alert('Error saving tokens')
+      toast({
+        title: "Error",
+        description: "Failed to save API tokens",
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }
