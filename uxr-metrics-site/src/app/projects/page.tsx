@@ -2,26 +2,26 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ProjectFilters } from '@/components/filters/ProjectFilters'
+import { DataExport } from '@/components/export/DataExport'
 import { 
   Plus, 
   Search, 
   Filter, 
-  Download,
-  Upload,
   Eye,
   Edit,
   Trash2,
   Calendar,
   Users,
   FileText,
-  Tag as TagIcon,
-  ArrowLeft
+  ArrowLeft,
+  BarChart3
 } from 'lucide-react'
-import { formatDate, formatFileSize } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 
 interface Project {
   id: string
@@ -73,21 +73,7 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('query') || '')
   const [showFilters, setShowFilters] = useState(searchParams.get('filter') === 'true')
 
-  useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    if (session.user.role !== 'ADMIN') {
-      router.push('/')
-      return
-    }
-
-    fetchProjects()
-  }, [session, status, router, searchParams])
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -102,7 +88,21 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/login')
+      return
+    }
+    if (session.user.role !== 'ADMIN') {
+      router.push('/')
+      return
+    }
+
+    fetchProjects()
+  }, [session, status, router, searchParams, fetchProjects])
 
   const handleSearch = () => {
     const params = new URLSearchParams()
@@ -145,6 +145,7 @@ export default function ProjectsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
             </div>
             <div className="flex items-center space-x-2">
+              <DataExport allProjects={true} />
               <Link href="/projects/new">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />

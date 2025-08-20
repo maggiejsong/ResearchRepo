@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DashboardCharts } from '@/components/charts/DashboardCharts'
 import { 
   Plus, 
   Search, 
@@ -18,11 +19,24 @@ import {
   Settings
 } from 'lucide-react'
 
+interface Project {
+  id: string
+  title: string
+  description?: string
+  status: string
+  source: string
+  participantCount?: number
+  createdAt: string
+}
+
 interface DashboardStats {
   totalProjects: number
   activeProjects: number
   totalParticipants: number
-  recentProjects: any[]
+  recentProjects: Project[]
+  projectStatusData: Array<{ name: string; value: number; color: string }>
+  projectTimelineData: Array<{ month: string; projects: number }>
+  projectsBySourceData: Array<{ source: string; count: number }>
 }
 
 export default function DashboardPage() {
@@ -32,7 +46,10 @@ export default function DashboardPage() {
     totalProjects: 0,
     activeProjects: 0,
     totalParticipants: 0,
-    recentProjects: []
+    recentProjects: [],
+    projectStatusData: [],
+    projectTimelineData: [],
+    projectsBySourceData: []
   })
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -56,15 +73,57 @@ export default function DashboardPage() {
       const projects = await response.json()
       
       const totalProjects = projects.length
-      const activeProjects = projects.filter((p: any) => p.status === 'ACTIVE').length
-      const totalParticipants = projects.reduce((sum: number, p: any) => sum + (p.participantCount || 0), 0)
+      const activeProjects = projects.filter((p: Project) => p.status === 'ACTIVE').length
+      const totalParticipants = projects.reduce((sum: number, p: Project) => sum + (p.participantCount || 0), 0)
       const recentProjects = projects.slice(0, 5)
+
+      // Process data for charts
+      const statusCounts = projects.reduce((acc: Record<string, number>, p: Project) => {
+        acc[p.status] = (acc[p.status] || 0) + 1
+        return acc
+      }, {})
+
+      const projectStatusData = Object.entries(statusCounts).map(([status, count]) => ({
+        name: status,
+        value: count,
+        color: status === 'ACTIVE' ? '#10B981' : 
+               status === 'COMPLETED' ? '#3B82F6' : 
+               status === 'PAUSED' ? '#F59E0B' : '#EF4444'
+      }))
+
+      // Timeline data for the last 6 months
+      const timelineData = []
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date()
+        date.setMonth(date.getMonth() - i)
+        const monthName = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+        const projectsInMonth = projects.filter((p: Project) => {
+          const projectDate = new Date(p.createdAt)
+          return projectDate.getMonth() === date.getMonth() && 
+                 projectDate.getFullYear() === date.getFullYear()
+        }).length
+        timelineData.push({ month: monthName, projects: projectsInMonth })
+      }
+
+      // Projects by source
+      const sourceCounts = projects.reduce((acc: Record<string, number>, p: Project) => {
+        acc[p.source] = (acc[p.source] || 0) + 1
+        return acc
+      }, {})
+
+      const projectsBySourceData = Object.entries(sourceCounts).map(([source, count]) => ({
+        source: source.replace('_', ' '),
+        count
+      }))
 
       setStats({
         totalProjects,
         activeProjects,
         totalParticipants,
-        recentProjects
+        recentProjects,
+        projectStatusData,
+        projectTimelineData: timelineData,
+        projectsBySourceData
       })
     } catch (error) {
       console.error('Error fetching dashboard stats:', error)
@@ -224,6 +283,13 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Data Visualization */}
+        <DashboardCharts 
+          projectStatusData={stats.projectStatusData}
+          projectTimelineData={stats.projectTimelineData}
+          projectsBySourceData={stats.projectsBySourceData}
+        />
 
         {/* Recent Projects */}
         <div className="bg-white rounded-lg shadow">

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ProjectImport } from '@/components/import/ProjectImport'
 import { 
   ArrowLeft, 
   Save, 
@@ -305,37 +306,24 @@ export default function SettingsPage() {
           </div>
 
           {/* Import Projects */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Import Projects</h2>
+          <div className="space-y-6">
+            <h2 className="text-lg font-medium text-gray-900">Import Projects</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 mb-2">Qualtrics Projects</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Import surveys and their response data from Qualtrics
-                </p>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  disabled={!formData.qualtricsToken}
-                >
-                  Import from Qualtrics
-                </Button>
-              </div>
-
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium text-gray-900 mb-2">Great Question Projects</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Import research projects and participant data
-                </p>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  disabled={!formData.greatQuestionToken}
-                >
-                  Import from Great Question
-                </Button>
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ProjectImport 
+                service="qualtrics" 
+                onImportComplete={() => {
+                  // Refresh dashboard or show success message
+                  window.location.reload()
+                }}
+              />
+              <ProjectImport 
+                service="great-question" 
+                onImportComplete={() => {
+                  // Refresh dashboard or show success message
+                  window.location.reload()
+                }}
+              />
             </div>
           </div>
 
