@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tags Tag[]
+}
+
+model Tag {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  projects ProjectTag[]
+}
+
+model Project {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  status            ProjectStatus @default(ACTIVE)
+  source            ProjectSource
+  externalId        String?  // For Qualtrics/Great Question project IDs
+  startDate         DateTime?
+  endDate           DateTime?
+  participantCount  Int?
+  budget            Float?
+  createdById       String
+  createdBy         User     @relation(fields: [createdById], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tags              ProjectTag[]
+  files             ProjectFile[]
+  metrics           ProjectMetric[]
+}
+
+model ProjectTag {
+  id        String  @id @default(cuid())
+  projectId String
+  tagId     String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, tagId])
+}
+
+model ProjectFile {
+  id          String   @id @default(cuid())
+  projectId   String
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String
+  uploadedAt  DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectMetric {
+  id        String   @id @default(cuid())
+  projectId String
+  metricKey String
+  value     String
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, metricKey])
+}
+
+model ApiToken {
+  id        String     @id @default(cuid())
+  service   ApiService @unique
+  token     String
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum ProjectSource {
+  MANUAL
+  QUALTRICS
+  GREAT_QUESTION
+}
+
+enum ApiService {
+  QUALTRICS
+  GREAT_QUESTION
+}
