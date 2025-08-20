@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { 
@@ -85,9 +85,9 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     }
 
     fetchProject()
-  }, [session, status, router, params.id])
+  }, [session, status, router, params.id, fetchProject])
 
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/projects/${params.id}`)
@@ -103,7 +103,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -399,7 +399,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     }
                     acc[categoryName].push(projectTag.tag)
                     return acc
-                  }, {} as Record<string, any[]>)}
+                  }, {} as Record<string, Array<{ id: string; name: string }>>)}
                   {Object.entries(
                     project.tags.reduce((acc, projectTag) => {
                       const categoryName = projectTag.tag.category.name
@@ -408,7 +408,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                       }
                       acc[categoryName].push(projectTag.tag)
                       return acc
-                    }, {} as Record<string, any[]>)
+                    }, {} as Record<string, Array<{ id: string; name: string }>>)
                   ).map(([categoryName, categoryTags]) => (
                     <div key={categoryName}>
                       <p className="text-sm font-medium text-gray-600 mb-2">{categoryName}</p>

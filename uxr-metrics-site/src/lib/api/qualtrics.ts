@@ -64,7 +64,7 @@ export class QualtricsAPI {
     }
   }
 
-  async getProjectMetrics(surveyId: string): Promise<Record<string, any>> {
+  async getProjectMetrics(surveyId: string): Promise<Record<string, unknown>> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/API/v3/surveys/${surveyId}/metrics`,

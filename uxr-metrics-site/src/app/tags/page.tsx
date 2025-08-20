@@ -8,9 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
   ArrowLeft, 
-  Plus, 
   Edit, 
-  Trash2, 
   Tag as TagIcon,
   Folder,
   Save,
@@ -45,7 +43,6 @@ export default function TagsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [showNewTag, setShowNewTag] = useState(false)
@@ -69,16 +66,9 @@ export default function TagsPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [categoriesRes, tagsRes] = await Promise.all([
-        fetch('/api/categories'),
-        fetch('/api/tags')
-      ])
-      
+      const categoriesRes = await fetch('/api/categories')
       const categoriesData = await categoriesRes.json()
-      const tagsData = await tagsRes.json()
-      
       setCategories(categoriesData)
-      setTags(tagsData)
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {

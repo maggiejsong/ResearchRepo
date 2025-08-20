@@ -18,11 +18,21 @@ import {
   Settings
 } from 'lucide-react'
 
+interface Project {
+  id: string
+  title: string
+  description?: string
+  status: string
+  source: string
+  participantCount?: number
+  createdAt: string
+}
+
 interface DashboardStats {
   totalProjects: number
   activeProjects: number
   totalParticipants: number
-  recentProjects: any[]
+  recentProjects: Project[]
 }
 
 export default function DashboardPage() {
@@ -56,8 +66,8 @@ export default function DashboardPage() {
       const projects = await response.json()
       
       const totalProjects = projects.length
-      const activeProjects = projects.filter((p: any) => p.status === 'ACTIVE').length
-      const totalParticipants = projects.reduce((sum: number, p: any) => sum + (p.participantCount || 0), 0)
+      const activeProjects = projects.filter((p: Project) => p.status === 'ACTIVE').length
+      const totalParticipants = projects.reduce((sum: number, p: Project) => sum + (p.participantCount || 0), 0)
       const recentProjects = projects.slice(0, 5)
 
       setStats({

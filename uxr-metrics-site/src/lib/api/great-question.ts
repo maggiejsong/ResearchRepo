@@ -66,7 +66,7 @@ export class GreatQuestionAPI {
     }
   }
 
-  async getProjectMetrics(projectId: string): Promise<Record<string, any>> {
+  async getProjectMetrics(projectId: string): Promise<Record<string, unknown>> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/v1/projects/${projectId}/analytics`,
@@ -79,7 +79,7 @@ export class GreatQuestionAPI {
     }
   }
 
-  async getParticipants(projectId: string): Promise<any[]> {
+  async getParticipants(projectId: string): Promise<unknown[]> {
     try {
       const response = await axios.get(
         `${this.baseUrl}/v1/projects/${projectId}/participants`,
